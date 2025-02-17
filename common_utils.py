@@ -21,8 +21,6 @@ from sklearn.model_selection import KFold
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score, precision_score, recall_score, confusion_matrix
 
-
-
 def split_dataset(df, columns_to_drop, test_size, random_state):
     label_encoder = preprocessing.LabelEncoder()
 
