@@ -8,6 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import librosa
 import os
+from typing import Tuple
 
 import torch
 from torch import nn
@@ -21,9 +22,7 @@ from sklearn.model_selection import KFold
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score, precision_score, recall_score, confusion_matrix
 
-
-
-def split_dataset(df, columns_to_drop, test_size, random_state):
+def split_dataset(df, columns_to_drop, test_size, random_state) -> Tuple[pd.DataFrame, np.ndarray, pd.DataFrame, np.ndarray]:
     label_encoder = preprocessing.LabelEncoder()
 
     df['label'] = label_encoder.fit_transform(df['label'])
@@ -38,7 +37,7 @@ def split_dataset(df, columns_to_drop, test_size, random_state):
 
     return df_train2, y_train2, df_test2, y_test2
 
-def preprocess_dataset(df_train, df_test):
+def preprocess_dataset(df_train, df_test) -> Tuple[np.ndarray, np.ndarray]:
 
     standard_scaler = preprocessing.StandardScaler()
     df_train_scaled = standard_scaler.fit_transform(df_train)
@@ -48,16 +47,13 @@ def preprocess_dataset(df_train, df_test):
     return df_train_scaled, df_test_scaled
 
 def set_seed(seed = 0):
-    '''
-    set random seed
-    '''
     random.seed(seed)
     torch.manual_seed(seed)
     np.random.seed(seed)
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
 
-def extract_features(filepath):
+def extract_features(filepath) -> pd.DataFrame:
     
     '''
     This function reads the content in a directory and for each audio file detected
@@ -133,32 +129,33 @@ class EarlyStopper:
 
 #### ADD ADDITIONAL FUNCTIONS HERE ####
 class MLP(nn.Module):
-    
+  def __init__(self, in_channels: int, hidden_channels: int, out_channels: int, dropout: float = 0.2) -> None:
+    super().__init__()
+    self.linear_1 = nn.Linear(in_channels, hidden_channels)
+    self.linear_2 = nn.Linear(hidden_channels, hidden_channels)
+    self.linear_3 = nn.Linear(hidden_channels, hidden_channels)  
+    self.out = nn.Linear(hidden_channels, out_channels)
 
-    ### BEGIN SOLUTION
-    def __init__(self, no_features, no_hidden = 128, no_labels = 1):
-        super().__init__()
-        self.mlp_stack = nn.Sequential(
-            nn.Linear(no_features, no_hidden),
-            nn.ReLU(),
-            nn.Dropout(p=0.2, inplace=False),
-            nn.Linear(no_hidden, 128),
-            nn.ReLU(),
-            nn.Dropout(p=0.2, inplace=False),
-            nn.Linear(128, 128),
-            nn.ReLU(),
-            nn.Dropout(p=0.2, inplace=False),
-            nn.Linear(128, no_labels),
-            nn.Sigmoid()
-        )
+    self.dropout = nn.Dropout(dropout)
+    self.act_fn = nn.ReLU()
+    self.out_act_fn = nn.Sigmoid()
 
-    def forward(self, x):
-        logits = self.mlp_stack(x)
-        return logits
-    
-    ### END SOLUTION
+  def forward(self, x: torch.Tensor) -> torch.Tensor:
+    x = self.linear_1(x)
+    x = self.act_fn(x)
+    x = self.dropout(x)
 
+    x = self.linear_2(x)
+    x = self.act_fn(x)
+    x = self.dropout(x)
 
-    ### END SOLUTION
+    x = self.linear_3(x)
+    x = self.act_fn(x)
+    x = self.dropout(x)
+
+    x = self.out(x)
+    x = self.out_act_fn(x)
+
+    return x
     
 loss_fn = torch.nn.BCELoss()
